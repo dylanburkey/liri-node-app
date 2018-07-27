@@ -1,9 +1,10 @@
 require("dotenv").config();
+const keys = require('./keys.js');
+
 const fs = require("fs");
 const request = require("request");
 const Twitter = require("twitter");
 const Spotify = require("node-spotify-api");
-const keys = require('./keys.js');
 
 // Keys for Spotify and Twitter
 
@@ -103,7 +104,9 @@ fs.readFile('random.txt', 'utf8', function (error, data) {
     let titleProb = data.split(/\s*"\s*/);
     let titleProbArr = (" " + titleProb[1]).split(" ");
     getSpotify(titleProbArr);
-});
+})
+
+};
 
 // Choice Function
 const choiceFunction = function(command, choice) {
@@ -123,7 +126,7 @@ const choiceFunction = function(command, choice) {
         default:
             console.log("Sorry what was that?")
     }
-};
+}
 
-choiceFunction(process.argv[2], process.argv[3])};
+choiceFunction(process.argv[2], process.argv[3]);
 
