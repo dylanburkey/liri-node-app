@@ -1,132 +1,202 @@
+//required node configurations and keys for api functionality
 require("dotenv").config();
-const keys = require('./keys.js');
+var fs = require("fs");
+var request = require("request");
+var Twitter = require("twitter");
+var Spotify = require("node-spotify-api");
+var keys = require("./keys.js");
 
-const fs = require("fs");
-const request = require("request");
-const Twitter = require("twitter");
-const Spotify = require("node-spotify-api");
+//storing keys for spotify and twitter authentication in variables
+var spotty = new Spotify(keys.spotify);
+var client = new Twitter(keys.twitter);
 
-// Keys for Spotify and Twitter
+//variables for holding tweet information
+var postDate = "";
+var tweetText = "";
 
+//variables for capturing user input and passing information to functions
+var wholeStatement = process.argv;
+var userInput = "";
+var userFunction = process.argv[2];
+var userSpecification = "";
 
-
-// Twitter Function
-// getTweets
-const getTweets = function() {
-    // Parameters for Twitter Function
-    let client = new Twitter(keys.twitter);
-    let params = {
-        screen_name: 'dylanburkey'
-    };
-    client.get('statuses/user_timeline', params, function (error, tweets, response) {
-        if (!error && response.statusCode === 200) {
-            for(let i = 0; i < tweets.length; i++){
-                let tweetText = tweets[i].text;
-                let postDate = tweets[i].created_at;
-                // Log Data
-                console.log(
-                    "I said: " + tweetText +
-                    "This tweet on" + postDate
-                );
-            }
-        }
-        if (error) {
-            // If we do have an error just log it
-            console.log(error);
-        }
-    });
-};
-
-// Spotify Function
-// getSpotify
-// @parm songTitle
-
-const getSpotify = function (songTitle)
+//quick for loop to modify the track name (if one is supplied)
+function fixTrackTitle(trackName)
 {
-    // If user does not enter a songTitle
-    let spotify = new Spotify(keys.spotify);
-
-    if(!songTitle){
-        songTitle = "Rage the night away";
+    for (var j = 3; j < trackName.length; j++)
+    {
+        userInput = userInput +" "+ trackName[j]; 
     }
+    userInput = userInput.trim();
+    spotifyReading(userInput);
+}
 
-    spotify.search({ type: 'track', query: songTitle }, function (err, data) {
-        if (err) {
-            return console.log('Error occurred: ' + err);
-        }
-        let songInfo = data.tracks.items;
-        for (let i = 0; i < 5; i++) {
-            let songData =
-                "Song Title: " + songInfo[i].name + "\r\n" +
-                "Artist Name: " + songInfo[i].artists[0].name + "\r\n" +
-                "Find this track on " + songInfo[i].album.name + "\r\n" +
-                "Preview this track at: " + songInfo[i].preview_url + "\r\n";
-            console.log(songData);
-        }
-    });
-};
-
-// Movie Function
-// getMovie
-// @param movieTitle
-const getMovie = function movie(movieTitle)
+//quick for loop to modify the movie title (if one is supplied)
+function fixMovieTitle(movieTitle)
 {
-
-    let queryUrl = "http://www.omdbapi.com/?t=" + movieTitle + "&y=&plot=short&tomatoes=true&apikey=trilogy";
-
-    request(queryUrl, function(error, response, body) {
-        // if there is no movieTitle
-        if (!movieTitle){
-            movieTitle = 'Boiler Room';
+    for (var i = 3; i < movieTitle.length; i++)
+    {
+        //combines components of the title with plus signs, required by omdb
+        if (i>3 && i<movieTitle.length)
+        {
+            userInput = userInput +"+"+ movieTitle[i]; 
         }
-        if (!error && response.statusCode === 200) {
-            let movieData =
-            "Title: " + JSON.parse(body).Title + "\r\n" +
-            "The movie was released in: " + JSON.parse(body).Year + "\r\n" +
-            "The IMDB Rating is: " + JSON.parse(body).imdbRating + "\r\n" +
-            "The Rotten Tomatoes Rating is: " + JSON.parse(body).tomatoRating + "\r\n" +
-            "It was created in: " + JSON.parse(body).Country + "\r\n" +
-            "Produced in the following language: " + JSON.parse(body).Language + "\r\n" +
-            "The plot is: " + JSON.parse(body).Plot + "\r\n" +
-            "The following Actors are: " + JSON.parse(body).Actors;
-            console.log(movieData);
+        else
+        {
+            userInput += movieTitle[i];
         }
-    });
-};
-
-const doWhatItSays = function(){
-fs.readFile('random.txt', 'utf8', function (error, data) {
-
-    if (error) {
-        return console.log(error);
     }
-
-    let titleProb = data.split(/\s*"\s*/);
-    let titleProbArr = (" " + titleProb[1]).split(" ");
-    getSpotify(titleProbArr);
-})
-
-};
-
-// Choice Function
-const choiceFunction = function(command, choice) {
-    switch (command) {
+    userInput = userInput.trim();
+    movieCall(userInput);
+}
+function operate(action)
+{
+    switch (action){
         case "my-tweets":
-            getTweets();
+            twitterReading();
             break;
         case "spotify-this-song":
-            getSpotify(choice);
+            fixTrackTitle(wholeStatement);
             break;
         case "movie-this":
-            getMovie(choice);
+            fixMovieTitle(wholeStatement);
             break;
         case "do-what-it-says":
-            doWhatItSays();
+            fileRead();
             break;
         default:
-            console.log("Sorry what was that?")
+            break;
     }
 }
 
-choiceFunction(process.argv[2], process.argv[3]);
+//this is the function that runs when the user wants to read twitter messages
+function twitterReading()
+{
+    client.get("search/tweets", {q: "CwruJason"}, function(error, tweets, response) 
+    {
+        if (error)
+        {
+            console.log(error);
+        }
+        if(!error && response.statusCode === 200)
+        {
+            for (var t = 0; t < tweets.statuses.length; t++)
+            {
+                postDate = tweets.statuses[t].created_at;
+                postDate = postDate.substr(0,19);
+                tweetText = tweets.statuses[t].text;
+                console.log("Tweet posted on: " + postDate);
+                console.log("Tweet text: " + tweetText);
+            }
+        }
+    });
 
+}
+
+//this is the function that runs when the user wants spotify information 
+function spotifyReading(songName)
+{
+    //if the user does not enter a track title, then we will search for The Sign
+    if (songName == "")
+    {
+        songName = "The Sign";
+    }
+    else
+    {}
+
+    //method for searching for a track on Spotify
+    spotty.search({ type: "track", query: songName}, function(err, data) 
+    {
+        if (err) 
+        {
+            console.log("Error occurred: " + err);
+            return;
+        }
+        else
+        {
+            console.log("Your search request for "+songName+" has been passed to Spotify, and here are the first 5 results:");
+            for (var s = 0; s < data.tracks.items.length && s < 5; s++)
+            {
+                console.log("**************************************************")
+                //song name
+                console.log("Song title: " + data.tracks.items[s].name);
+                //artist name
+                console.log("Artists name: " + data.tracks.items[s].artists[0].name);
+                //album name
+                console.log("The track is on the " + data.tracks.items[s].album.name +" album.");
+                //preview url
+                console.log("You can preview this song at: " + data.tracks.items[s].preview_url)
+            }
+        }
+    });
+}
+
+//this is the function that runs when the user requests movie information
+function movieCall(movieName)
+{
+    //if the user does not enter a movie name, then the title is set to Mr Nobody
+    if(movieName == "")
+    {
+        movieName = "Mr+Nobody";
+    }
+    else
+    {}
+    
+    //build of the omdbapi query line with a specified movie title that includes the rotten tomatoes information
+    var queryURL = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&tomatoes=true&apikey=trilogy";
+
+    request (queryURL, function(error, response, body)
+    {
+        if (error)
+        {
+            console.log(error);
+        }
+
+        //when there is no error and the status code is good...display the required omdb information
+        if(!error && response.statusCode === 200)
+        {
+
+            console.log("The movie title you've inquired about is: " + JSON.parse(body).Title + ".");
+            console.log(JSON.parse(body).Title + " was released in " + JSON.parse(body).Year + ".");
+            console.log(JSON.parse(body).Title + " was rated " +  JSON.parse(body).imdbRating + " by IMDB.");
+            console.log(JSON.parse(body).Title + " was rated " + JSON.parse(body).tomatoRating + " by Rotten Tomatoes.");
+            console.log(JSON.parse(body).Title + " was created in " + JSON.parse(body).Country + ".");
+            console.log(JSON.parse(body).Title + " was produced in " + JSON.parse(body).Language + ".");
+            console.log("The plot of " + JSON.parse(body).Title + " is: " + JSON.parse(body).Plot + ".");
+            console.log(JSON.parse(body).Actors + " all starred in " + JSON.parse(body).Title + ".");
+        }
+    });
+}
+
+//this is the function that runs when the user wants to run the random.txt file operation
+function fileRead()
+{
+    //this reads the text from a specified file
+    fs.readFile("random.txt", "utf8", function(err, data)
+    {
+        //if there is an error it will display to the terminal
+        if (err){
+            console.log(err);
+        }
+        else
+        {
+            //parse the data in the file by comma
+            var dataArray = data.split(",");
+
+            //there is no need to loop through the array
+            //because we know that there are only two elements and what they are they are assigned to the appropriate variables
+            userFunction = dataArray[0];
+            userSpecification = dataArray[1];
+
+            //remove the quotes from the value
+            userSpecification = userSpecification.substr(1,(userSpecification.length-2));
+
+            //because the track title is structure correctly, the value can just be passed directly to the spotify function
+            spotifyReading(userSpecification);
+        }
+    });    
+    
+}
+
+//this is intentionally placed AFTER all of the functional operations are defined
+operate(userFunction);
